@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: "30 0 * * *"   # 每天 UTC 00:30 = 北京时间 08:30
   workflow_dispatch:         # 允许在 Actions 页面手动点"Run workflow"
+  push:                      # 改了代码或配置后自动跑一次，方便检验
+    branches: [main]
+    paths: ["monitor.py", "config.yaml", ".github/workflows/monitor.yml"]
 
 permissions:
   contents: write            # 需要把 state/ 的更新提交回仓库
@@ -17,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -33,6 +36,7 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          PYTHONUNBUFFERED: "1"
         run: python monitor.py
 
       - name: 保存已读状态

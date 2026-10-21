@@ -72,13 +72,20 @@ def today_bj() -> date:
     return datetime.now(BEIJING).date()
 
 
+def annotate(level: str, title: str, msg: str):
+    """在 GitHub Actions 里输出注释（notice/warning/error），不登录也能在运行页面看到。"""
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        esc = lambda s: s.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        print(f"::{level} title={esc(title).replace(':', '%3A').replace(',', '%2C')}::{esc(msg)}", flush=True)
+
+
 # ---------------------------------------------------------------- 抓取与解析
 
-def fetch(url: str, retries: int = 2) -> str:
+def fetch(url: str, retries: int = 1) -> str:
     last = None
     for i in range(retries + 1):
         try:
-            r = requests.get(url, headers=UA, timeout=25)
+            r = requests.get(url, headers=UA, timeout=15)
             r.raise_for_status()
             if not r.encoding or r.encoding.lower() == "iso-8859-1":
                 r.encoding = r.apparent_encoding
@@ -330,13 +337,17 @@ def run_daily(cfg, dry_run: bool):
     cutoff = (today - timedelta(days=cfg.get("lookback_days", 21))).isoformat()
 
     new_items, warnings, ok_sources, titles_seen = [], [], 0, set()
+    failed_names = []
     for src in cfg["sources"]:
         name, url = src["name"], src["url"]
+        t0 = time.time()
         try:
             items, _ = extract_items(fetch(url), url, name)
         except Exception as e:
             fails[name] = fails.get(name, 0) + 1
+            failed_names.append(name)
             print(f"[失败] {name}: {type(e).__name__} {e}", file=sys.stderr)
+            annotate("warning", f"抓取失败 {name}", f"{type(e).__name__}（{time.time() - t0:.0f}秒）：{str(e)[:200]}")
             if fails[name] >= 3:
                 warnings.append(f"{name} 已连续 {fails[name]} 次抓取失败（{type(e).__name__}），网站可能改版或屏蔽了访问。")
             continue
@@ -367,7 +378,10 @@ def run_daily(cfg, dry_run: bool):
     last_year = last_year_preview(cfg, meta, today)
     has_content = new_items or reminders or warnings or last_year
 
-    print(f"新通知 {len(new_items)} 条，提醒 {len(reminders)} 条，去年同月 {len(last_year)} 条，警告 {len(warnings)} 条")
+    summary = (f"网站 {ok_sources}/{len(cfg['sources'])} 个抓取成功；新通知 {len(new_items)} 条，"
+               f"提醒 {len(reminders)} 条，去年同月 {len(last_year)} 条，警告 {len(warnings)} 条")
+    print(summary)
+    annotate("notice", "运行结果", summary + (f"。失败：{'、'.join(failed_names)}" if failed_names else ""))
     digest = render_digest(new_items, reminders, last_year, warnings, cfg, today)
     OUT_DIR.mkdir(exist_ok=True)
     (OUT_DIR / "digest.html").write_text(digest, encoding="utf-8")
@@ -379,8 +393,13 @@ def run_daily(cfg, dry_run: bool):
     if has_content:
         main_n = sum(1 for i in new_items if not i.is_result)
         subject = f"【综测雷达】{today:%m月%d日} · {main_n} 条新通知" if main_n else f"【综测雷达】{today:%m月%d日} · 提醒"
-        send_mail(subject, digest)
+        try:
+            send_mail(subject, digest)
+        except Exception as e:
+            annotate("error", "邮件发送失败", f"{type(e).__name__}: {e}")
+            raise
         print("邮件已发送")
+        annotate("notice", "邮件已发送", subject)
     else:
         print("没有新内容，不发邮件")
 
