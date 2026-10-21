@@ -1,0 +1,45 @@
+name: 综测雷达
+
+on:
+  schedule:
+    - cron: "30 0 * * *"   # 每天 UTC 00:30 = 北京时间 08:30
+  workflow_dispatch:         # 允许在 Actions 页面手动点"Run workflow"
+
+permissions:
+  contents: write            # 需要把 state/ 的更新提交回仓库
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 抓取并发送邮件
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        run: python monitor.py
+
+      - name: 保存已读状态
+        if: always()
+        run: |
+          git config user.name "zongce-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state/
+          git diff --cached --quiet || git commit -m "更新已读状态 $(date -u +%F)"
+          git push
