@@ -20,9 +20,11 @@ sources:
     url: http://xsc.swu.edu.cn/ccfw/pypj.htm
   - name: 校团委·通知公告
     url: http://gqt.swu.edu.cn/tzgg.htm
-  # 重庆市
-  - name: 重庆市教委·公告公示
-    url: https://jw.cq.gov.cn/zwxx_209/gggs/
+  # 重庆市教委（jw.cq.gov.cn）屏蔽境外访问，GitHub 上连不上，先停用。
+  # 重庆市研究生科研创新项目等通知会经研究生院转发，上面已覆盖。
+  # 如果改为在自己电脑上运行，可以去掉下面两行开头的 # 恢复。
+  # - name: 重庆市教委·公告公示
+  #   url: https://jw.cq.gov.cn/zwxx_209/gggs/
   # 全国（竞赛、学会、会议）
   - name: 研究生创新实践系列大赛·通知
     url: https://cpipc.acge.org.cn/pw/notice/list/1
