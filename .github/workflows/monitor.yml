@@ -2,7 +2,10 @@ name: 综测雷达
 
 on:
   schedule:
-    - cron: "30 0 * * *"   # 每天 UTC 00:30 = 北京时间 08:30
+    # GitHub 的定时任务在整点/半点等高峰时段可能延迟或被丢弃，所以避开这些时刻，并加一次补跑。
+    # 已发过的通知会记录在 state/，补跑不会重复发。
+    - cron: "23 0 * * *"   # 北京时间 08:23
+    - cron: "53 3 * * *"   # 北京时间 11:53（补跑）
   workflow_dispatch:         # 允许在 Actions 页面手动点"Run workflow"
   push:                      # 改了代码或配置后自动跑一次，方便检验
     branches: [main]
