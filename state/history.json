@@ -1962,5 +1962,19 @@
   "is_result": true,
   "focus": false,
   "deadlines": []
+ },
+ {
+  "title": "第二届全国青年地理学家大会暨第十三届全国地理学研究生学术年会通知（第二号）",
+  "url": "https://www.gsc.org.cn/gsc/xueshuDetail.html?id=54&contentId=2539",
+  "date": "2026-10-25",
+  "source": "中国地理学会·会议通知",
+  "cats": [
+   "A-conf"
+  ],
+  "is_result": false,
+  "focus": true,
+  "deadlines": [
+   "有意愿进行分论坛报告交流的参会者请于2026年11月4日前提交报告摘要至会议系统"
+  ]
  }
 ]
