@@ -234,7 +234,8 @@ def cat_lookup(cfg):
     return {c["id"]: c for c in cfg["categories"]}
 
 
-def render_items_html(items, cats):
+def render_items_html(items, cats, show_hint=True, today=None):
+    """today 不为空时，给标注日期比今天早一周以上的通知加提示（网站补发、日期倒填的情况）。"""
     groups = {}
     for it in items:
         groups.setdefault(it.cats[0], []).append(it)
@@ -243,11 +244,15 @@ def render_items_html(items, cats):
     for cid in order:
         c = cats[cid]
         parts.append(f'<h3 style="margin:18px 0 4px;color:#1f4e79">{html.escape(c["name"])}'
-                     f'（{len(groups[cid])}）</h3>'
-                     f'<div style="color:#666;font-size:13px;margin-bottom:6px">{html.escape(c["hint"])}</div>')
+                     f'（{len(groups[cid])}）</h3>')
+        if show_hint:
+            parts.append(f'<div style="color:#666;font-size:13px;margin-bottom:6px">{html.escape(c["hint"])}</div>')
         for it in sorted(groups[cid], key=lambda x: (x.focus, x.date), reverse=True):
             dl = "".join(f'<div style="color:#b03a2e;font-size:13px">⏰ {html.escape(s)}</div>'
                          for s in it.deadlines)
+            if today and it.date < (today - timedelta(days=7)).isoformat():
+                dl += (f'<div style="color:#b03a2e;font-size:13px">⚠ 标注日期是 {it.date}，但网站最近才挂出来，'
+                       f'报名或截止时间可能已经过了</div>')
             star = "⭐ " if it.focus else ""
             parts.append(
                 f'<div style="margin:6px 0 10px;padding-left:8px;border-left:3px solid #9cc3e6">'
@@ -266,13 +271,13 @@ def render_digest(new_items, reminders, last_year, warnings, cfg, today):
         body.append('<h3 style="color:#7d3c98">📌 本期提醒</h3>' +
                     "".join(f"<p>{html.escape(r)}</p>" for r in reminders))
     if main:
-        body.append(f"<h2>新通知（{len(main)}）</h2>" + render_items_html(main, cats))
+        body.append(f"<h2>新通知（{len(main)}）</h2>" + render_items_html(main, cats, today=today))
     if last_year:
         body.append(f'<h2 style="color:#555">去年{today.month}月出现过的相关通知（今年可能会再来）</h2>'
                     + render_items_html(last_year, cats))
     if results:
-        body.append(f'<h2 style="color:#555">结果公示（{len(results)}，了解进度即可）</h2>'
-                    + render_items_html(results, cats))
+        body.append(f'<h2 style="color:#555">结果公示（{len(results)}，了解进度即可，公示本身不加分）</h2>'
+                    + render_items_html(results, cats, show_hint=False))
     if warnings:
         body.append('<h3 style="color:#b03a2e">⚠ 抓取异常</h3>' +
                     "".join(f"<p>{html.escape(w)}</p>" for w in warnings))
@@ -335,6 +340,7 @@ def run_daily(cfg, dry_run: bool):
     meta = load_json(META_FILE, {})
     fails = meta.setdefault("fail_counts", {})
     cutoff = (today - timedelta(days=cfg.get("lookback_days", 21))).isoformat()
+    result_cutoff = (today - timedelta(days=7)).isoformat()
 
     new_items, warnings, ok_sources, titles_seen = [], [], 0, set()
     failed_names = []
@@ -361,6 +367,9 @@ def run_daily(cfg, dry_run: bool):
             seen[it.url] = today.isoformat()
             key = re.sub(r"\W", "", it.title)
             if it.date < cutoff or key in titles_seen or not classify(it, cfg):
+                continue
+            # 公示期一般 5 个工作日；标注日期超过一周的公示多半已结束（网站补发、日期倒填），不再推送
+            if it.is_result and it.date < result_cutoff:
                 continue
             titles_seen.add(key)
             new_items.append(it)
