@@ -2024,5 +2024,17 @@
   "is_result": true,
   "focus": false,
   "deadlines": []
+ },
+ {
+  "title": "​第三届实景三维中国建设与应用学术研讨会通知（二号）",
+  "url": "https://www.csgpc.org/detail/28279.html",
+  "date": "2026-11-01",
+  "source": "中国测绘学会·通知公告",
+  "cats": [
+   "A-conf"
+  ],
+  "is_result": false,
+  "focus": true,
+  "deadlines": []
  }
 ]
